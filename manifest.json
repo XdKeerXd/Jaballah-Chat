@@ -1,0 +1,30 @@
+{
+  "name": "Jaballah Chat",
+  "short_name": "JChat",
+  "description": "Connect, chat, and call with friends in real-time",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot.png",
+      "type": "image/png",
+      "sizes": "1080x1920",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  }
+}

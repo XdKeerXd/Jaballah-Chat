@@ -1,8 +1,7 @@
 // -----------------------
 // Imports (CDN ES modules)
 // -----------------------
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
   getFirestore,
   collection,
@@ -17,14 +16,14 @@ import {
   orderBy,
   writeBatch,
   Timestamp
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 // -----------------------
 // Firebase configuration
@@ -36,15 +35,98 @@ ensureFirebaseConfigSet();
 // Init Firebase
 // -----------------------
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
-// Initialize auth state from localStorage
-let isAdmin = localStorage.getItem('isAdmin') === 'true';
+const storage = getStorage(app);
 
 // Cache for user ranks
 const userRanks = new Map();
+
+// Media handling variables
+let selectedMedia = null;
+const mediaPreview = document.getElementById('mediaPreview');
+const imageInput = document.getElementById('imageInput');
+const videoInput = document.getElementById('videoInput');
+
+// Handle media file selection
+function handleMediaSelect(file, type) {
+  if (!file) return;
+  
+  selectedMedia = { file, type };
+  mediaPreview.innerHTML = '';
+  mediaPreview.className = 'media-preview active';
+
+  // Create preview element
+  const element = type === 'image' 
+    ? document.createElement('img')
+    : document.createElement('video');
+
+  if (type === 'video') {
+    element.controls = true;
+  }
+
+  // Create remove button
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'remove-media';
+  removeBtn.innerHTML = '×';
+  removeBtn.onclick = clearMediaPreview;
+
+  // Create progress bar
+  const progressContainer = document.createElement('div');
+  progressContainer.className = 'upload-progress';
+  progressContainer.innerHTML = '<div class="progress-bar"></div>';
+
+  // Set preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    element.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  mediaPreview.appendChild(element);
+  mediaPreview.appendChild(removeBtn);
+  mediaPreview.appendChild(progressContainer);
+}
+
+// Clear media preview
+function clearMediaPreview() {
+  selectedMedia = null;
+  mediaPreview.innerHTML = '';
+  mediaPreview.className = 'media-preview';
+  imageInput.value = '';
+  videoInput.value = '';
+}
+
+// Upload media to Firebase Storage
+async function uploadMedia(file, type) {
+  const progressBar = mediaPreview.querySelector('.progress-bar');
+  
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${type}_${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, `chat_media/${fileName}`);
+    
+    // Upload file
+    const uploadTask = uploadBytes(storageRef, file);
+    
+    // Track progress
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        progressBar.style.width = progress + '%';
+      }
+    );
+
+    // Get download URL after upload
+    await uploadTask;
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+
+  } catch (error) {
+    console.error('Error uploading media:', error);
+    throw error;
+  }
+}
 
 // Get user rank
 async function getUserRank(uid) {
@@ -813,6 +895,17 @@ async function sendMessage(text) {
     console.error("sendMessage error:", err);
   }
 }
+// Media input handlers
+imageInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleMediaSelect(file, 'image');
+});
+
+videoInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleMediaSelect(file, 'video');
+});
+
 window.sendMessage = sendMessage;
 window.sendFriendRequest = sendFriendRequest;
 window.handleFriendRequest = handleFriendRequest;
