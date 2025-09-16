@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#4f46e5" />
   <meta name="description" content="Connect, chat, and call with friends in real-time" />
   <link rel="manifest" href="manifest.json" />
@@ -98,6 +98,94 @@
       flex: 1;
       padding: 12px;
       border: none;
+    }
+
+    /* Video Call Styles */
+    .video-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 2000;
+      display: none;
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      padding: 16px;
+      height: 100%;
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 200px;
+      background: #1a1a1a;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .video-wrapper video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 12px;
+      border-radius: 50px;
+      z-index: 2001;
+    }
+
+    .video-control-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .video-control-btn:hover {
+      background: #444;
+    }
+
+    .video-control-btn.end-call {
+      background: #dc2626;
+    }
+
+    .video-control-btn.end-call:hover {
+      background: #b91c1c;
+    }
+
+    .copy-tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
       border-radius: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -1028,6 +1116,9 @@
           <div class="input-container">
             <input id="msgBox" placeholder="Type your message and press Enter..." />
             <div class="attachment-buttons">
+              <button class="attach-btn" title="Start Video Call" onclick="startCall()">
+                <span class="material-symbols-rounded">video_call</span>
+              </button>
               <label class="attach-btn" title="Send image">
                 <span class="material-symbols-rounded">image</span>
                 <input type="file" id="imageInput" accept="image/*" style="display:none" />
@@ -1218,6 +1309,34 @@
         <button class="install-now" onclick="installApp()">Install Now</button>
         <button class="maybe-later" onclick="closeInstallPopup()">Maybe Later</button>
       </div>
+    </div>
+
+    <!-- Video Call Container -->
+    <div id="videoContainer" class="video-container">
+      <div class="video-grid">
+        <div class="video-wrapper">
+          <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+        <div class="video-wrapper">
+          <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+      </div>
+      <div class="video-controls">
+        <button class="video-control-btn" id="toggleMic" title="Toggle Microphone">
+          <span class="material-symbols-rounded">mic</span>
+        </button>
+        <button class="video-control-btn" id="toggleVideo" title="Toggle Video">
+          <span class="material-symbols-rounded">videocam</span>
+        </button>
+        <button class="video-control-btn end-call" id="endCall" title="End Call">
+          <span class="material-symbols-rounded">call_end</span>
+        </button>
+        <button class="video-control-btn" id="copyCallLink" title="Copy Call Link">
+          <span class="material-symbols-rounded">link</span>
+        </button>
+      </div>
+      <span class="copy-tooltip" id="copyTooltip">Link copied!</span>
+    </div>
       <button id="installButton" class="install-button">
         <span class="material-symbols-rounded">add_to_home_screen</span>
         Install
@@ -1386,6 +1505,10 @@
   <!-- IMPORTANT: type="module" so ES module imports work -->
   <script type="module" src="auth.js"></script>
   <script type="module" src="app.js"></script>
+  <script type="module" src="notifications.js"></script>
+
+  <!-- Notification Container -->
+  <div class="notification" id="notification"></div>
 
   <!-- PWA Installation -->
   <script>
@@ -1393,19 +1516,30 @@
     const installPrompt = document.getElementById('installPrompt');
     const installPopup = document.getElementById('installPopup');
     
-    // Check if user has already dismissed the popup
-    function hasUserDismissedPopup() {
-      return localStorage.getItem('installPopupDismissed') === 'true';
+    // PWA Install Helpers
+    function checkInstallState() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone || 
+                          document.referrer.includes('android-app://');
+      return isStandalone || localStorage.getItem('installPopupDismissed') === 'true';
     }
 
     function showInstallPopup() {
-      if (!hasUserDismissedPopup() && deferredPrompt) {
+      if (!checkInstallState() && deferredPrompt) {
         installPopup.style.display = 'block';
+        setTimeout(() => {
+          installPopup.style.opacity = '1';
+          installPopup.style.transform = 'translate(-50%, 0)';
+        }, 100);
       }
     }
 
     function closeInstallPopup() {
-      installPopup.style.display = 'none';
+      installPopup.style.opacity = '0';
+      installPopup.style.transform = 'translate(-50%, 100%)';
+      setTimeout(() => {
+        installPopup.style.display = 'none';
+      }, 300);
       localStorage.setItem('installPopupDismissed', 'true');
     }
 
@@ -1456,6 +1590,185 @@
       // Hide both prompts when app is installed
       installPrompt.style.display = 'none';
       installPopup.style.display = 'none';
+    });
+
+    // Video Call Implementation
+    let peerConnection;
+    let localStream;
+    let remoteStream;
+    const servers = {
+      iceServers: [
+        {
+          urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'],
+        },
+      ],
+    };
+
+    // Setup media devices
+    async function setupMediaDevices() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        document.getElementById('localVideo').srcObject = localStream;
+        
+        // Create peer connection after getting media
+        peerConnection = new RTCPeerConnection(servers);
+        
+        // Add local tracks to peer connection
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle incoming tracks
+        peerConnection.ontrack = (event) => {
+          remoteStream = event.streams[0];
+          document.getElementById('remoteVideo').srcObject = remoteStream;
+        };
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+        alert('Could not access camera/microphone. Please ensure you have given permission.');
+      }
+    }
+
+    // Start a call
+    async function startCall() {
+      const videoContainer = document.getElementById('videoContainer');
+      videoContainer.style.display = 'block';
+      // Force reflow
+      videoContainer.offsetHeight;
+      videoContainer.classList.add('active');
+      await setupMediaDevices();
+      
+      // Generate a unique room ID
+      const roomId = Math.random().toString(36).substring(2, 15);
+      
+      // Store the offer in Firebase
+      try {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        const roomRef = await db.collection('calls').doc(roomId);
+        await roomRef.set({
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp
+          },
+          created: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Listen for the answer
+        roomRef.onSnapshot(async (snapshot) => {
+          const data = snapshot.data();
+          if (data?.answer && !peerConnection.currentRemoteDescription) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+          }
+        });
+
+        // Copy room link
+        const callLink = `${window.location.origin}?call=${roomId}`;
+        await navigator.clipboard.writeText(callLink);
+        showCopyTooltip();
+        
+      } catch (error) {
+        console.error('Error creating call:', error);
+        alert('Could not create call. Please try again.');
+      }
+    }
+
+    // Join a call
+    async function joinCall(roomId) {
+      document.getElementById('videoContainer').style.display = 'block';
+      await setupMediaDevices();
+      
+      try {
+        const roomRef = await db.collection('calls').doc(roomId);
+        const roomData = (await roomRef.get()).data();
+        
+        if (roomData?.offer) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(roomData.offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          
+          await roomRef.update({
+            answer: {
+              type: answer.type,
+              sdp: answer.sdp
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error joining call:', error);
+        alert('Could not join call. Please check the link and try again.');
+      }
+    }
+
+    // End call
+    function endCall() {
+      const videoContainer = document.getElementById('videoContainer');
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      if (peerConnection) {
+        peerConnection.close();
+      }
+      videoContainer.classList.remove('active');
+      setTimeout(() => {
+        videoContainer.style.display = 'none';
+        document.getElementById('localVideo').srcObject = null;
+        document.getElementById('remoteVideo').srcObject = null;
+      }, 300);
+    }
+
+    // Toggle microphone
+    function toggleMic() {
+      const micBtn = document.getElementById('toggleMic');
+      const audioTrack = localStream.getAudioTracks()[0];
+      audioTrack.enabled = !audioTrack.enabled;
+      micBtn.querySelector('span').textContent = audioTrack.enabled ? 'mic' : 'mic_off';
+    }
+
+    // Toggle video
+    function toggleVideo() {
+      const videoBtn = document.getElementById('toggleVideo');
+      const videoTrack = localStream.getVideoTracks()[0];
+      videoTrack.enabled = !videoTrack.enabled;
+      videoBtn.querySelector('span').textContent = videoTrack.enabled ? 'videocam' : 'videocam_off';
+    }
+
+    // Copy call link
+    async function copyCallLink() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('call');
+      if (roomId) {
+        const callLink = `${window.location.origin}?call=${roomId}`;
+        await navigator.clipboard.writeText(callLink);
+        showCopyTooltip();
+      }
+    }
+
+    function showCopyTooltip() {
+      const tooltip = document.getElementById('copyTooltip');
+      tooltip.style.opacity = '1';
+      setTimeout(() => {
+        tooltip.style.opacity = '0';
+      }, 2000);
+    }
+
+    // Event listeners for video controls
+    document.getElementById('toggleMic').addEventListener('click', toggleMic);
+    document.getElementById('toggleVideo').addEventListener('click', toggleVideo);
+    document.getElementById('endCall').addEventListener('click', endCall);
+    document.getElementById('copyCallLink').addEventListener('click', copyCallLink);
+
+    // Check URL for call parameter
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('call');
+      if (roomId) {
+        joinCall(roomId);
+      }
     });
   </script>
 </body>
