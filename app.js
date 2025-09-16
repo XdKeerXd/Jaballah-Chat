@@ -1,7 +1,8 @@
 // -----------------------
 // Imports (CDN ES modules)
 // -----------------------
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
 import {
   getFirestore,
   collection,
@@ -16,8 +17,14 @@ import {
   orderBy,
   writeBatch,
   Timestamp
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 // -----------------------
 // Firebase configuration
@@ -29,8 +36,12 @@ ensureFirebaseConfigSet();
 // Init Firebase
 // -----------------------
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// Initialize auth state from localStorage
+let isAdmin = localStorage.getItem('isAdmin') === 'true';
 
 // Cache for user ranks
 const userRanks = new Map();
@@ -90,14 +101,6 @@ async function sendFriendRequest(targetUid) {
     alert('Error sending friend request');
   }
 }
-
-// Sign in anonymously (so we have a UID)
-signInAnonymously(auth)
-  .then(() => {
-    console.log("Signed in anonymously");
-    loadDisplayName(); // Load display name after auth
-  })
-  .catch(err => console.error("Auth error:", err));
 
 // UI refs for auth & users
 const emailInput = document.getElementById("email");
@@ -382,13 +385,43 @@ if (localStorage.getItem('isAdmin') === 'true') {
   initializeAdminFeatures();
 }
 
+// Show loading state in button
+function setAuthButtonLoading(button, isLoading, originalText) {
+  if (isLoading) {
+    button.disabled = true;
+    button.innerHTML = `
+      <span class="material-symbols-rounded loading">sync</span>
+      Loading...
+    `;
+  } else {
+    button.disabled = false;
+    button.innerHTML = originalText;
+  }
+}
+
+// Show error message
+function showAuthError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'auth-error';
+  errorDiv.textContent = message;
+  userInfoDiv.innerHTML = '';
+  userInfoDiv.appendChild(errorDiv);
+  setTimeout(() => errorDiv.remove(), 5000);
+}
+
 // Register
 registerBtn.addEventListener("click", async () => {
   const email = emailInput.value?.trim();
   const password = passwordInput.value;
-  const displayName = displayNameInput.value?.trim();
+  const displayName = displayNameInput.value?.trim() || email?.split('@')[0];
   
-  if (!email || !password) return alert("Please provide both email and password");
+  if (!email || !password) {
+    showAuthError("Please provide both email and password");
+    return;
+  }
+
+  const originalBtnHtml = registerBtn.innerHTML;
+  setAuthButtonLoading(registerBtn, true);
   if (!displayName) return alert("Please set a display name");
   
   try {

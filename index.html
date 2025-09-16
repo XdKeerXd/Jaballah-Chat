@@ -301,14 +301,44 @@
     }
 
     .auth-form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
       margin-bottom: 16px;
     }
 
-    .auth-form input {
-      grid-column: 1 / -1;
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s;
+    }
+
+    .input-group:focus-within {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .input-group .material-symbols-rounded {
+      color: #64748b;
+      font-size: 20px;
+    }
+
+    .input-group input {
+      flex: 1;
+      border: none;
+      padding: 8px;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      box-shadow: none;
     }
 
     .auth-buttons {
@@ -319,6 +349,60 @@
     .auth-buttons button {
       flex: 1;
       font-size: 13px;
+      position: relative;
+    }
+
+    .auth-buttons button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .auth-error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .auth-error::before {
+      content: "error";
+      font-family: "Material Symbols Rounded";
+      font-size: 20px;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .loading {
+      animation: spin 1s linear infinite;
+    }
+
+    #userInfo {
+      margin-top: 16px;
+    }
+
+    .auth-success {
+      background: #dcfce7;
+      color: #166534;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .auth-success::before {
+      content: "check_circle";
+      font-family: "Material Symbols Rounded";
+      font-size: 20px;
     }
 
     #userInfo {
@@ -749,8 +833,18 @@
         
         <div id="authUI">
           <div class="auth-form">
-            <input id="email" placeholder="Enter your email address" />
-            <input id="password" type="password" placeholder="Enter your password" />
+            <div class="input-group">
+              <span class="material-symbols-rounded">mail</span>
+              <input id="email" type="email" placeholder="Enter your email address" />
+            </div>
+            <div class="input-group">
+              <span class="material-symbols-rounded">lock</span>
+              <input id="password" type="password" placeholder="Enter your password" />
+            </div>
+            <div class="input-group">
+              <span class="material-symbols-rounded">badge</span>
+              <input id="displayName" type="text" placeholder="Enter your display name (optional)" />
+            </div>
           </div>
           
           <div class="auth-buttons">
@@ -762,14 +856,14 @@
               <span class="material-symbols-rounded">login</span>
               Login
             </button>
-            <button id="logoutBtn" class="secondary">
+            <button id="logoutBtn" class="secondary" style="display:none;">
               <span class="material-symbols-rounded">logout</span>
               Logout
             </button>
           </div>
         </div>
         
-        <div id="userInfo" class="muted"></div>
+        <div id="userInfo"></div>
 
         <!-- Friend Requests Section -->
         <div id="friendRequestsSection" class="friend-section" style="display:none;">
@@ -1015,6 +1109,7 @@
   </script>
 
   <!-- IMPORTANT: type="module" so ES module imports work -->
+  <script type="module" src="auth.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
