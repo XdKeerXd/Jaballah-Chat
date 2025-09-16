@@ -1,0 +1,39 @@
+<!-- Admin Panel Modal and Tab UI (to be merged into index.html) -->
+<div id="admin-tab" class="tab-content" style="display:none;">
+  <div class="card">
+    <h3>
+      <span class="material-symbols-rounded">admin_panel_settings</span>
+      Admin Panel
+    </h3>
+    <div id="adminControls">
+      <button id="clearChatBtn">
+        <span class="material-symbols-rounded">delete_sweep</span>
+        Clear All Chat
+      </button>
+      <button id="toggleChatBtn">
+        <span class="material-symbols-rounded">toggle_off</span>
+        Disable Chat
+      </button>
+      <button id="enableChatBtn" style="display:none;">
+        <span class="material-symbols-rounded">toggle_on</span>
+        Enable Chat
+      </button>
+      <div style="margin-top:1rem;">
+        <label for="timeoutUser">Timeout User (UID):</label>
+        <input id="timeoutUser" placeholder="User UID" style="width:200px;" />
+        <button id="timeoutBtn">Timeout</button>
+      </div>
+    </div>
+    <div id="adminStatus" class="muted" style="margin-top:1rem;"></div>
+  </div>
+</div>
+
+<!-- Redeem Code Modal -->
+<div id="redeemModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:white;padding:2rem 2.5rem;border-radius:1rem;max-width:350px;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <h3 style="margin-bottom:1rem;">Enter Admin Code</h3>
+    <input id="adminCodeInput" placeholder="Admin code" style="width:100%;padding:0.75rem 1rem;margin-bottom:1rem;" />
+    <button id="redeemCodeBtn" style="width:100%;">Redeem</button>
+    <div id="redeemError" class="muted" style="margin-top:0.5rem;"></div>
+  </div>
+</div>
